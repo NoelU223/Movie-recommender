@@ -1,5 +1,8 @@
-def main():
-    print("Movie recommender backend - Phase 1")
+from fastapi import FastAPI
 
-if __name__ == "__main__":
-    main()
+app = FastAPI(title="Movie recommender API")
+
+@app.get("/health")
+
+def health_check():
+    return {"status":"ok"}
