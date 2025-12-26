@@ -1,0 +1,15 @@
+body {
+  padding-bottom: 40px;
+}
+
+.card {
+  border-radius: 0.5rem;
+}
+
+.navbar-brand {
+  letter-spacing: 0.03em;
+}
+
+main.container {
+  max-width: 960px;
+}
