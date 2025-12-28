@@ -23,9 +23,17 @@
           <a class="nav-link" href="/">Filmovi</a>
         </li>
       </ul>
-      <div class="d-flex">
-        <a class="btn btn-outline-light me-2" href="/users/new">Novi korisnik</a>
-        <a class="btn btn-warning" href="/new-movie">Novi film</a>
+      <div class="d-flex align-items-center">
+        <a class="btn btn-outline-light me-2" href="/new-movie">Novi film</a>
+        {% if current_user %}
+          <span class="text-light small me-2">
+            Prijavljen kao {{ current_user.email }}
+          </span>
+          <a class="btn btn-sm btn-outline-warning" href="/logout">Logout</a>
+        {% else %}
+          <a class="btn btn-sm btn-outline-light me-2" href="/login">Login</a>
+          <a class="btn btn-sm btn-warning" href="/users/new">Registracija</a>
+        {% endif %}
       </div>
     </div>
   </div>

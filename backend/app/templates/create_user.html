@@ -10,8 +10,15 @@
             <label class="form-label">Email</label>
             <input type="email" class="form-control" name="email" required placeholder="korisnik@example.com">
           </div>
-          <button type="submit" class="btn btn-primary w-100">Spremi korisnika</button>
+          <div class="mb-3">
+            <label class="form-label">Lozinka</label>
+            <input type="password" class="form-control" name="password" required minlength="4" maxlength="64">
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Registriraj se</button>
         </form>
+        <p class="mt-3 mb-0 text-muted small">
+          Već imaš račun? <a href="/login">Prijavi se</a>.
+        </p>
       </div>
     </div>
   </div>

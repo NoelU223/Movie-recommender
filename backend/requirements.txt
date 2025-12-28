@@ -1,6 +1,9 @@
 fastapi
-uvicorn
+uvicorn[standard]
 sqlalchemy
 psycopg2-binary
 jinja2
 python-multipart
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+itsdangerous==2.2.0
