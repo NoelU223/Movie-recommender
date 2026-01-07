@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Float, DateTime
 from sqlalchemy.orm import relationship
+from datetime import datetime
 from .database import Base
 
 
@@ -32,3 +33,15 @@ class Rating(Base):
 
     user = relationship("User", back_populates="ratings")
     movie = relationship("Movie", back_populates="ratings")
+
+class MovieStats(Base):
+    __tablename__ = "movie_stats"
+
+    id = Column(Integer, primary_key=True, index=True)
+    movie_id = Column(Integer, ForeignKey("movies.id"), unique=True, nullable=False)
+
+    avg_rating = Column(Float, nullable=False)
+    rating_count = Column(Integer, nullable=False)
+    last_updated = Column(DateTime, default=datetime.utcnow)
+
+    movie = relationship("Movie")
