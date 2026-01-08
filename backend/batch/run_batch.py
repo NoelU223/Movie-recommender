@@ -6,6 +6,7 @@ from app.database import SessionLocal
 from app.models import Rating, MovieStats
 
 import csv
+import json
 from minio import Minio
 from io import StringIO, BytesIO
 
@@ -48,6 +49,8 @@ def run_batch():
 
     print("Batch obrada završena.")
     export_ratings_dataset(db)
+    recommendations = generate_recommendations(db)
+    export_recommendations(recommendations)
 
 def export_ratings_dataset(db: Session):
     ratings = db.query(Rating).all()
@@ -80,6 +83,48 @@ def export_ratings_dataset(db: Session):
         data_stream,
         length=len(data),
         content_type="text/csv"
+    )
+
+def generate_recommendations(db: Session, top_n: int = 5):
+    movies = (
+        db.query(MovieStats)
+        .order_by(MovieStats.avg_rating.desc(), MovieStats.rating_count.desc())
+        .limit(top_n)
+        .all()
+    )
+
+    recommendations = []
+
+    for m in movies:
+        recommendations.append({
+            "movie_id": m.movie_id,
+            "avg_rating": m.avg_rating,
+            "rating_count": m.rating_count
+        })
+
+    return recommendations
+
+def export_recommendations(recommendations: list):
+    data = json.dumps(recommendations, indent=2).encode("utf-8")
+
+    client = Minio(
+        "minio:9000",
+        access_key="minioadmin",
+        secret_key="minioadmin",
+        secure=False
+    )
+
+    bucket_name = "recommendations"
+
+    if not client.bucket_exists(bucket_name):
+        client.make_bucket(bucket_name)
+
+    client.put_object(
+        bucket_name,
+        "top_movies.json",
+        BytesIO(data),
+        length=len(data),
+        content_type="application/json"
     )
 
 
