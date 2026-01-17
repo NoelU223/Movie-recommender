@@ -3,6 +3,10 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+import redis
+import json
+import asyncio
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from .database import engine, get_db
 from .models import Base, User, Movie, Rating
@@ -14,6 +18,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 app = FastAPI(title="Movie recommender API")
 
+Instrumentator().instrument(app).expose(app)
+
+redis_client = redis.from_url("redis://redis:6379/0", encoding="utf-8", decode_responses=True)
+
 app.add_middleware(SessionMiddleware, secret_key="neki_jaki_secret")
 
 Base.metadata.create_all(bind=engine)
@@ -24,7 +32,7 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password[:72])  
+    return pwd_context.hash(password[:72])
 
 def verify_password(password: str, password_hash: str) -> bool:
     return pwd_context.verify(password, password_hash)
@@ -40,8 +48,29 @@ def health_check():
     return {"status": "ok"}
 
 @app.get("/", response_class=HTMLResponse)
-def list_movies(request: Request, db: Session = Depends(get_db)):
-    movies = db.query(Movie).all()
+async def list_movies(request: Request, db: Session = Depends(get_db)):
+    cache_key = "movies_list"
+    
+    try:
+        cached = redis_client.get(cache_key)
+        if cached:
+            import ast
+            movies_data = json.loads(cached)
+            movies = []
+            for m_data in movies_data:
+                movie = Movie(id=m_data['id'], title=m_data['title'], genre=m_data['genre'], year=m_data['year'])
+                movies.append(movie)
+        else:
+            movies = db.query(Movie).all()
+            movies_data = []
+            for m in movies:
+                m_dict = {'id': m.id, 'title': m.title, 'genre': m.genre, 'year': m.year}
+                movies_data.append(m_dict)
+            redis_client.setex(cache_key, 300, json.dumps(movies_data))  
+    except Exception as e:
+        print(f"Redis error: {e}, fallback to DB")
+        movies = db.query(Movie).all()
+    
     current_user = get_current_user(request, db)
     return templates.TemplateResponse(
         "movies.html",
@@ -77,7 +106,6 @@ def movie_detail(movie_id: int, request: Request, db: Session = Depends(get_db))
 def new_user_form(request: Request):
     return templates.TemplateResponse("create_user.html", {"request": request})
 
-
 @app.post("/users/new")
 def create_user_html(
     request: Request,
@@ -95,14 +123,11 @@ def create_user_html(
     db.refresh(user)
 
     request.session["user_id"] = user.id
-
     return RedirectResponse(url="/", status_code=303)
-
 
 @app.get("/login", response_class=HTMLResponse)
 def login_form(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
-
 
 @app.post("/login")
 def login(
@@ -125,12 +150,10 @@ def login(
     request.session["user_id"] = user.id
     return RedirectResponse(url="/", status_code=303)
 
-
 @app.get("/logout")
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/", status_code=303)
-
 
 @app.get("/new-movie", response_class=HTMLResponse)
 def new_movie_form(request: Request, db: Session = Depends(get_db)):
@@ -139,7 +162,6 @@ def new_movie_form(request: Request, db: Session = Depends(get_db)):
         "create_movie.html",
         {"request": request, "current_user": current_user},
     )
-
 
 @app.post("/new-movie")
 def create_movie_html(
@@ -153,7 +175,11 @@ def create_movie_html(
     db.add(movie)
     db.commit()
     db.refresh(movie)
+    
+    redis_client.delete("movies_list")
+    
     return RedirectResponse(url="/", status_code=303)
+
 
 @app.post("/ratings/html")
 def add_rating_html(
@@ -184,7 +210,6 @@ def add_rating_html(
     db.commit()
     return RedirectResponse(url=f"/movies/{movie_id}", status_code=303)
 
-
 @app.post("/users")
 def create_user(email: str, password: str, db: Session = Depends(get_db)):
     user = User(email=email, password_hash=hash_password(password))
@@ -192,7 +217,6 @@ def create_user(email: str, password: str, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     return {"id": user.id, "email": user.email}
-
 
 @app.post("/movies")
 def create_movie(title: str, genre: str, year: int, db: Session = Depends(get_db)):
@@ -202,11 +226,9 @@ def create_movie(title: str, genre: str, year: int, db: Session = Depends(get_db
     db.refresh(movie)
     return movie
 
-
 @app.get("/movies")
 def get_movies(db: Session = Depends(get_db)):
     return db.query(Movie).all()
-
 
 @app.post("/ratings")
 def add_rating(user_id: int, movie_id: int, rating: int, db: Session = Depends(get_db)):
