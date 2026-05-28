@@ -49,11 +49,13 @@ services:
     build: ./backend
     depends_on:
       - db
-      - redis 
+      - redis
+      - kafka 
     environment:
       DATABASE_URL: postgresql://movie_user:movie_pass@db:5432/movie_db
       REDIS_URL: redis://redis:6379/0
       TMDB_TOKEN: ${TMDB_TOKEN} 
+      KAFKA_BOOTSTRAP: kafka:29092 
     expose:
       - "8000"
     healthcheck:  
@@ -106,6 +108,44 @@ services:
       REDIS_URL: redis://redis:6379/0     
 
     restart: unless-stopped    
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: movie_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: movie_kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_INTERNAL://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_INTERNAL://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+  
+  events_consumer:
+    build: ./backend
+    container_name: movie_events_consumer
+    command: python -m app.events.consumer.run_consumer
+    depends_on:
+      - kafka
+      - minio
+    environment:
+      KAFKA_BOOTSTRAP: kafka:29092
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    restart: unless-stopped
+  
 
 volumes:
   postgres_data:

@@ -17,3 +17,4 @@ Prometheus i Grafana prate performanse API-ja, baze i cachea.
 Svi servisi Dockerizirani za lakše skaliranje. Pokreće se s docker compose up --build.
 Cache test: localhost/ 2x → vidi "Cache MISS→HIT" u backend logovima. 
 Metrics: localhost:9090, Grafana: localhost:3000 (admin/admin).
+

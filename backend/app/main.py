@@ -7,16 +7,71 @@ import redis
 import json
 import asyncio
 from prometheus_fastapi_instrumentator import Instrumentator
-
 from .database import engine, get_db
 from .models import Base, User, Movie, Rating
 from sqlalchemy.orm import Session
 from pathlib import Path
 from passlib.context import CryptContext
+from .events.producer import send_event
+from datetime import datetime, timezone
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 app = FastAPI(title="Movie recommender API")
+
+
+
+@app.middleware("http")
+async def track_event(request: Request, call_next):
+    """Bilježi svaki HTTP request kao event u Kafku."""
+    response = await call_next(request)
+
+    path = request.url.path
+    if path.startswith("/static") or path in ("/metrics", "/health", "/favicon.ico"):
+        return response
+
+    event_type = _classify_event(request.method, path)
+    if event_type is None:
+        return response
+
+    user_id = request.session.get("user_id")
+
+    event = {
+        "event_type": event_type,
+        "user_id": user_id,
+        "path": path,
+        "method": request.method,
+        "status_code": response.status_code,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+    if event_type == "view_movie" and path.startswith("/movies/"):
+        try:
+            event["movie_id"] = int(path.split("/")[2])
+        except (ValueError, IndexError):
+            pass
+
+    send_event(event)
+    return response
+
+
+def _classify_event(method: str, path: str) -> str | None:
+    """Mapira HTTP path → tip eventa. Vraća None za sve što nas ne zanima."""
+    if method == "GET" and path == "/":
+        return "view_list"
+    if method == "GET" and path.startswith("/movies/"):
+        return "view_movie"
+    if method == "POST" and path == "/login":
+        return "login"
+    if method == "POST" and path == "/users/new":
+        return "register"
+    if method == "GET" and path == "/logout":
+        return "logout"
+    if method == "POST" and path == "/ratings/html":
+        return "rate_movie"
+    if method == "POST" and path == "/new-movie":
+        return "create_movie"
+    return None
 
 Instrumentator().instrument(app).expose(app)
 
