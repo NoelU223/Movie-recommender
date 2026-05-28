@@ -17,14 +17,12 @@ HEADERS = {
 
 
 def fetch_genres() -> dict[int, str]:
-    """Dohvaća mapu {genre_id: genre_name} jer TMDB vraća samo ID-eve žanrova."""
     r = requests.get(f"{BASE_URL}/genre/movie/list", headers=HEADERS)
     r.raise_for_status()
     return {g["id"]: g["name"] for g in r.json()["genres"]}
 
 
 def fetch_popular_page(page: int) -> list[dict]:
-    """Dohvaća jednu stranicu (20 filmova) popularnih filmova."""
     r = requests.get(
         f"{BASE_URL}/movie/popular",
         headers=HEADERS,
@@ -35,7 +33,6 @@ def fetch_popular_page(page: int) -> list[dict]:
 
 
 def upsert_movie(db: Session, m: dict, genre_map: dict[int, str]) -> bool:
-    """Ubacuje novi film ili ažurira postojeći. Vraća True ako je novi."""
     existing = db.query(Movie).filter_by(tmdb_id=m["id"]).first()
 
     genre_name = "Unknown"
@@ -107,7 +104,6 @@ def run_import(pages: int = 5) -> None:
 
 
 def run_loop(pages: int = 10, interval_hours: int = 24) -> None:
-    """Pokreće uvoz odmah, pa zatim ponavlja svakih N sati."""
     while True:
         try:
             print(f"=== Pokrećem TMDB sinkronizaciju ===")
