@@ -53,6 +53,7 @@ services:
     environment:
       DATABASE_URL: postgresql://movie_user:movie_pass@db:5432/movie_db
       REDIS_URL: redis://redis:6379/0
+      TMDB_TOKEN: ${TMDB_TOKEN} 
     expose:
       - "8000"
     healthcheck:  
@@ -91,6 +92,20 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
+
+  tmdb_import:
+    build: ./backend
+    container_name: movie_tmdb_import
+    command: python -m app.tmdb.importer
+    depends_on:
+      - db
+      - redis 
+    environment:
+      DATABASE_URL: postgresql://movie_user:movie_pass@db:5432/movie_db
+      TMDB_TOKEN: ${TMDB_TOKEN}
+      REDIS_URL: redis://redis:6379/0     
+
+    restart: unless-stopped    
 
 volumes:
   postgres_data:

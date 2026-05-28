@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Float, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Float, DateTime, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
@@ -20,6 +20,14 @@ class Movie(Base):
     title = Column(String, index=True, nullable=False)
     genre = Column(String, nullable=False)
     year = Column(Integer, nullable=False)
+
+    tmdb_id = Column(Integer, unique=True, index=True, nullable=True)
+    overview = Column(Text, nullable=True)
+    poster_path = Column(String, nullable=True)
+    popularity = Column(Float, nullable=True, default=0.0)
+    vote_average = Column(Float, nullable=True, default=0.0)
+    vote_count = Column(Integer, nullable=True, default=0)
+    original_language = Column(String, nullable=True)
 
     ratings = relationship("Rating", back_populates="movie")
 

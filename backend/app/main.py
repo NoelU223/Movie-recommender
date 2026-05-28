@@ -50,27 +50,40 @@ def health_check():
 @app.get("/", response_class=HTMLResponse)
 async def list_movies(request: Request, db: Session = Depends(get_db)):
     cache_key = "movies_list"
-    
+
     try:
         cached = redis_client.get(cache_key)
         if cached:
-            import ast
             movies_data = json.loads(cached)
             movies = []
             for m_data in movies_data:
-                movie = Movie(id=m_data['id'], title=m_data['title'], genre=m_data['genre'], year=m_data['year'])
+                movie = Movie(
+                    id=m_data['id'],
+                    title=m_data['title'],
+                    genre=m_data['genre'],
+                    year=m_data['year'],
+                    poster_path=m_data.get('poster_path'),
+                    vote_average=m_data.get('vote_average'),
+                )
                 movies.append(movie)
         else:
             movies = db.query(Movie).all()
             movies_data = []
             for m in movies:
-                m_dict = {'id': m.id, 'title': m.title, 'genre': m.genre, 'year': m.year}
+                m_dict = {
+                    'id': m.id,
+                    'title': m.title,
+                    'genre': m.genre,
+                    'year': m.year,
+                    'poster_path': m.poster_path,
+                    'vote_average': m.vote_average,
+                }
                 movies_data.append(m_dict)
-            redis_client.setex(cache_key, 300, json.dumps(movies_data))  
+            redis_client.setex(cache_key, 300, json.dumps(movies_data))
     except Exception as e:
         print(f"Redis error: {e}, fallback to DB")
         movies = db.query(Movie).all()
-    
+
     current_user = get_current_user(request, db)
     return templates.TemplateResponse(
         "movies.html",

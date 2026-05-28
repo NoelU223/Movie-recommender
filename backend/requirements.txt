@@ -11,3 +11,4 @@ minio
 redis
 prometheus-fastapi-instrumentator
 prometheus-client
+requests
