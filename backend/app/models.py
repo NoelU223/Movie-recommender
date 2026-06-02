@@ -53,3 +53,24 @@ class MovieStats(Base):
     last_updated = Column(DateTime, default=datetime.utcnow)
 
     movie = relationship("Movie")
+
+class Watchlist(Base):
+    __tablename__ = "watchlist"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    movie_id = Column(Integer, ForeignKey("movies.id"), primary_key=True)
+    added_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+    movie = relationship("Movie")
+
+
+class Favorite(Base):
+    __tablename__ = "favorites"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    movie_id = Column(Integer, ForeignKey("movies.id"), primary_key=True)
+    added_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+    movie = relationship("Movie")

@@ -26,6 +26,7 @@
       <div class="d-flex align-items-center">
         <a class="btn btn-outline-light me-2" href="/new-movie">Novi film</a>
         {% if current_user %}
+          <a class="btn btn-sm btn-outline-light me-2" href="/profile">Moj profil</a>
           <span class="text-light small me-2">
             Prijavljen kao {{ current_user.email }}
           </span>

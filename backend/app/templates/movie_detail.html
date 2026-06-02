@@ -2,50 +2,80 @@
 {% block content %}
 <div class="row">
   <div class="col-md-7">
-  <div class="card shadow-sm mb-3">
-    <div class="row g-0">
-      {% if movie.poster_path %}
-        <div class="col-4">
-          <img src="https://image.tmdb.org/t/p/w300{{ movie.poster_path }}"
-               class="img-fluid rounded-start" alt="{{ movie.title }}">
-        </div>
-      {% endif %}
-      <div class="{% if movie.poster_path %}col-8{% else %}col-12{% endif %}">
-        <div class="card-body">
-          <h1 class="h3 mb-1">{{ movie.title }}</h1>
-          <p class="text-muted mb-2">{{ movie.year }} · {{ movie.genre }}</p>
+    <div class="card shadow-sm mb-3">
+      <div class="row g-0">
+        {% if movie.poster_path %}
+          <div class="col-4">
+            <img src="https://image.tmdb.org/t/p/w300{{ movie.poster_path }}"
+                 class="img-fluid rounded-start" alt="{{ movie.title }}">
+          </div>
+        {% endif %}
+        <div class="{% if movie.poster_path %}col-8{% else %}col-12{% endif %}">
+          <div class="card-body">
+            <h1 class="h3 mb-1">{{ movie.title }}</h1>
+            <p class="text-muted mb-2">{{ movie.year }} · {{ movie.genre }}</p>
 
-          {% if movie.vote_average %}
-            <p class="mb-2">
-              <span class="badge bg-warning text-dark">
-                ⭐ TMDB: {{ "%.1f"|format(movie.vote_average) }}/10
-              </span>
-            </p>
-          {% endif %}
+            {% if movie.vote_average %}
+              <p class="mb-2">
+                <span class="badge bg-warning text-dark">
+                  ⭐ TMDB: {{ "%.1f"|format(movie.vote_average) }}/10
+                </span>
+              </p>
+            {% endif %}
 
-          {% if movie.overview %}
-            <p class="small">{{ movie.overview }}</p>
-          {% endif %}
+            {% if movie.overview %}
+              <p class="small">{{ movie.overview }}</p>
+            {% endif %}
 
-          {% if avg_rating %}
-            <p class="mb-1">
-              <strong>Prosječna korisnička ocjena:</strong>
-              <span class="badge bg-success">{{ "%.1f"|format(avg_rating) }}/10</span>
-              <span class="text-muted small ms-1">({{ count }} ocjena)</span>
-            </p>
-          {% else %}
-            <p class="text-muted mb-1">Još nema korisničkih ocjena za ovaj film.</p>
-          {% endif %}
+            {% if avg_rating %}
+              <p class="mb-1">
+                <strong>Prosječna korisnička ocjena:</strong>
+                <span class="badge bg-success">{{ "%.1f"|format(avg_rating) }}/10</span>
+                <span class="text-muted small ms-1">({{ count }} ocjena)</span>
+              </p>
+            {% else %}
+              <p class="text-muted mb-1">Još nema korisničkih ocjena za ovaj film.</p>
+            {% endif %}
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
 
   <div class="col-md-5">
     <div class="card shadow-sm">
       <div class="card-body">
         {% if current_user %}
+          <div class="d-flex gap-2 mb-3">
+            {% if in_watchlist %}
+              <form method="post" action="/watchlist/remove/{{ movie.id }}" class="flex-grow-1">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                  ✓ U Watchlisti
+                </button>
+              </form>
+            {% else %}
+              <form method="post" action="/watchlist/add/{{ movie.id }}" class="flex-grow-1">
+                <button type="submit" class="btn btn-primary w-100">
+                  + Watchlist
+                </button>
+              </form>
+            {% endif %}
+
+            {% if in_favorites %}
+              <form method="post" action="/favorites/remove/{{ movie.id }}" class="flex-grow-1">
+                <button type="submit" class="btn btn-outline-danger w-100">
+                  ❤ Omiljeni
+                </button>
+              </form>
+            {% else %}
+              <form method="post" action="/favorites/add/{{ movie.id }}" class="flex-grow-1">
+                <button type="submit" class="btn btn-danger w-100">
+                  ♡ Dodaj u omiljene
+                </button>
+              </form>
+            {% endif %}
+          </div>
+
           <h2 class="h5 mb-3">Dodaj ili promijeni svoju ocjenu</h2>
           <form method="post" action="/ratings/html">
             <div class="mb-3">

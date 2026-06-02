@@ -8,12 +8,13 @@ import json
 import asyncio
 from prometheus_fastapi_instrumentator import Instrumentator
 from .database import engine, get_db
-from .models import Base, User, Movie, Rating
+from .models import Base, User, Movie, Rating, Watchlist, Favorite
 from sqlalchemy.orm import Session
 from pathlib import Path
 from passlib.context import CryptContext
 from .events.producer import send_event
 from datetime import datetime, timezone
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -50,13 +51,18 @@ async def track_event(request: Request, call_next):
             event["movie_id"] = int(path.split("/")[2])
         except (ValueError, IndexError):
             pass
-
+        
+    if event_type in ("watchlist_add", "watchlist_remove",
+                      "favorite_add", "favorite_remove"):
+        try:
+            event["movie_id"] = int(path.split("/")[3])
+        except (ValueError, IndexError):
+            pass
+        
     send_event(event)
     return response
 
-
 def _classify_event(method: str, path: str) -> str | None:
-    """Mapira HTTP path → tip eventa. Vraća None za sve što nas ne zanima."""
     if method == "GET" and path == "/":
         return "view_list"
     if method == "GET" and path.startswith("/movies/"):
@@ -71,6 +77,16 @@ def _classify_event(method: str, path: str) -> str | None:
         return "rate_movie"
     if method == "POST" and path == "/new-movie":
         return "create_movie"
+    if method == "POST" and path.startswith("/watchlist/add/"):
+        return "watchlist_add"
+    if method == "POST" and path.startswith("/watchlist/remove/"):
+        return "watchlist_remove"
+    if method == "POST" and path.startswith("/favorites/add/"):
+        return "favorite_add"
+    if method == "POST" and path.startswith("/favorites/remove/"):
+        return "favorite_remove"
+    if method == "GET" and path == "/profile":
+        return "view_profile"
     return None
 
 Instrumentator().instrument(app).expose(app)
@@ -159,6 +175,16 @@ def movie_detail(movie_id: int, request: Request, db: Session = Depends(get_db))
 
     current_user = get_current_user(request, db)
 
+    in_watchlist = False
+    in_favorites = False
+    if current_user:
+        in_watchlist = db.query(Watchlist).filter_by(
+            user_id=current_user.id, movie_id=movie_id
+        ).first() is not None
+        in_favorites = db.query(Favorite).filter_by(
+            user_id=current_user.id, movie_id=movie_id
+        ).first() is not None
+
     return templates.TemplateResponse(
         "movie_detail.html",
         {
@@ -167,6 +193,8 @@ def movie_detail(movie_id: int, request: Request, db: Session = Depends(get_db))
             "avg_rating": avg_rating,
             "count": count,
             "current_user": current_user,
+            "in_watchlist": in_watchlist,
+            "in_favorites": in_favorites,
         },
     )
 
@@ -312,3 +340,98 @@ def add_rating(user_id: int, movie_id: int, rating: int, db: Session = Depends(g
 
     db.commit()
     return {"message": "Rating saved"}
+
+@app.post("/watchlist/add/{movie_id}")
+def watchlist_add(movie_id: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    existing = db.query(Watchlist).filter_by(user_id=user.id, movie_id=movie_id).first()
+    if not existing:
+        db.add(Watchlist(user_id=user.id, movie_id=movie_id))
+        db.commit()
+
+    return RedirectResponse(url=f"/movies/{movie_id}", status_code=303)
+
+@app.post("/watchlist/remove/{movie_id}")
+def watchlist_remove(movie_id: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    db.query(Watchlist).filter_by(user_id=user.id, movie_id=movie_id).delete()
+    db.commit()
+    return RedirectResponse(url=f"/movies/{movie_id}", status_code=303)
+
+@app.post("/favorites/add/{movie_id}")
+def favorite_add(movie_id: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    existing = db.query(Favorite).filter_by(user_id=user.id, movie_id=movie_id).first()
+    if not existing:
+        db.add(Favorite(user_id=user.id, movie_id=movie_id))
+        db.commit()
+
+    return RedirectResponse(url=f"/movies/{movie_id}", status_code=303)
+
+
+@app.post("/favorites/remove/{movie_id}")
+def favorite_remove(movie_id: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    db.query(Favorite).filter_by(user_id=user.id, movie_id=movie_id).delete()
+    db.commit()
+    return RedirectResponse(url=f"/movies/{movie_id}", status_code=303)
+
+@app.get("/profile", response_class=HTMLResponse)
+def profile(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    watchlist_movies = (
+        db.query(Movie)
+        .join(Watchlist, Watchlist.movie_id == Movie.id)
+        .filter(Watchlist.user_id == user.id)
+        .order_by(Watchlist.added_at.desc())
+        .all()
+    )
+
+    favorite_movies = (
+        db.query(Movie)
+        .join(Favorite, Favorite.movie_id == Movie.id)
+        .filter(Favorite.user_id == user.id)
+        .order_by(Favorite.added_at.desc())
+        .all()
+    )
+
+    rated = (
+        db.query(Movie, Rating)
+        .join(Rating, Rating.movie_id == Movie.id)
+        .filter(Rating.user_id == user.id)
+        .all()
+    )
+
+    total_ratings = len(rated)
+    avg_user_rating = (
+        sum(r.rating for _, r in rated) / total_ratings
+        if total_ratings else None
+    )
+
+    return templates.TemplateResponse(
+        "profile.html",
+        {
+            "request": request,
+            "current_user": user,
+            "watchlist_movies": watchlist_movies,
+            "favorite_movies": favorite_movies,
+            "rated": rated,
+            "total_ratings": total_ratings,
+            "avg_user_rating": avg_user_rating,
+        },
+    )

@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1">Moj profil</h1>
+    <p class="text-muted mb-0">{{ current_user.email }}</p>
+  </div>
+</div>
+
+<div class="row mb-4">
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body text-center">
+        <h2 class="h4 mb-0 text-primary">{{ total_ratings }}</h2>
+        <small class="text-muted">Ocijenjenih filmova</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body text-center">
+        <h2 class="h4 mb-0 text-success">
+          {% if avg_user_rating %}{{ "%.1f"|format(avg_user_rating) }}{% else %}–{% endif %}
+        </h2>
+        <small class="text-muted">Prosjek tvojih ocjena</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body text-center">
+        <h2 class="h4 mb-0 text-danger">{{ favorite_movies|length }}</h2>
+        <small class="text-muted">Omiljenih filmova</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="h4 mb-3">🎬 Watchlist <small class="text-muted">({{ watchlist_movies|length }})</small></h2>
+{% if watchlist_movies %}
+<div class="row g-3 mb-4">
+  {% for movie in watchlist_movies %}
+    <div class="col-md-3 col-lg-2">
+      <a href="/movies/{{ movie.id }}" class="text-decoration-none">
+        <div class="card shadow-sm h-100">
+          {% if movie.poster_path %}
+            <img src="https://image.tmdb.org/t/p/w300{{ movie.poster_path }}"
+                 class="card-img-top" alt="{{ movie.title }}"
+                 style="height: 240px; object-fit: cover;">
+          {% else %}
+            <div class="d-flex align-items-center justify-content-center bg-secondary text-white" style="height: 240px;">
+              <small>Nema postera</small>
+            </div>
+          {% endif %}
+          <div class="card-body p-2">
+            <small class="text-dark fw-bold">{{ movie.title }}</small>
+          </div>
+        </div>
+      </a>
+    </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-light border mb-4">
+  Tvoja Watchlist je prazna. Otvori bilo koji film i klikni <strong>+ Watchlist</strong>.
+</div>
+{% endif %}
+
+<h2 class="h4 mb-3">❤ Omiljeni <small class="text-muted">({{ favorite_movies|length }})</small></h2>
+{% if favorite_movies %}
+<div class="row g-3 mb-4">
+  {% for movie in favorite_movies %}
+    <div class="col-md-3 col-lg-2">
+      <a href="/movies/{{ movie.id }}" class="text-decoration-none">
+        <div class="card shadow-sm h-100 border-danger">
+          {% if movie.poster_path %}
+            <img src="https://image.tmdb.org/t/p/w300{{ movie.poster_path }}"
+                 class="card-img-top" alt="{{ movie.title }}"
+                 style="height: 240px; object-fit: cover;">
+          {% else %}
+            <div class="d-flex align-items-center justify-content-center bg-secondary text-white" style="height: 240px;">
+              <small>Nema postera</small>
+            </div>
+          {% endif %}
+          <div class="card-body p-2">
+            <small class="text-dark fw-bold">{{ movie.title }}</small>
+          </div>
+        </div>
+      </a>
+    </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-light border mb-4">
+  Još nemaš omiljenih filmova. Klikni ♡ na bilo kojem filmu.
+</div>
+{% endif %}
+
+<h2 class="h4 mb-3">⭐ Moje ocjene <small class="text-muted">({{ total_ratings }})</small></h2>
+{% if rated %}
+<div class="card shadow-sm">
+  <div class="list-group list-group-flush">
+    {% for movie, rating in rated %}
+      <a href="/movies/{{ movie.id }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+        <div>
+          <strong>{{ movie.title }}</strong>
+          <small class="text-muted ms-2">{{ movie.year }} · {{ movie.genre }}</small>
+        </div>
+        <span class="badge bg-success">{{ rating.rating }}/10</span>
+      </a>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="alert alert-light border">
+  Još nisi ocijenio nijedan film.
+</div>
+{% endif %}
+
+{% endblock %}
