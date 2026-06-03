@@ -18,3 +18,9 @@ Svi servisi Dockerizirani za lakše skaliranje. Pokreće se s docker compose up 
 Cache test: localhost/ 2x → vidi "Cache MISS→HIT" u backend logovima. 
 Metrics: localhost:9090, Grafana: localhost:3000 (admin/admin).
 
+Faza 4: Analitički sloj + streaming + strojno učenje. Aplikacija se proširuje s prikupljanjem korisničkih događaja u realnom vremenu i AI sustavom za predikciju korisničkih preferencija.
+Filmovi se automatski uvoze iz TMDB API-ja (poster, opis, ocjena, popularnost) — više nije potreban ručni unos. Svaki korisnički klik (posjet filmu, ocjenjivanje, dodavanje u listu) bilježi se kao događaj u Apache Kafka topic, a zaseban consumer ih arhivira u MinIO kao CSV datoteke. Dodane su funkcionalnosti Watchlist i Favoriti te korisnička profilna stranica.
+ML model treniran je na korisničkim ocjenama (binarna klasifikacija — hoće li korisnik dati ocjenu ≥ 7). Uspoređena su tri klasifikatora: Naive Bayes, Logistic Regression i Random Forest. Najbolji model (Random Forest, F1=0.75, AUC=0.90) integriran je u aplikaciju kroz /predict/{movie_id} endpoint, a predikcija se prikazuje kao AI badge na stranici filma.
+Pokretanje: docker compose up --build. Generiranje sintetičkih podataka za demonstraciju: docker compose run --rm data_generator. Treniranje modela: docker compose run --rm ml_trainer. TMDB token postavlja se u .env datoteku (TMDB_TOKEN=...).
+Nove tehnologije: Apache Kafka, scikit-learn, TMDB API. MinIO (Faza 2) sada služi i za arhivu događaja, ne samo dataset za trening.
+
