@@ -58,6 +58,8 @@ services:
       KAFKA_BOOTSTRAP: kafka:29092 
     expose:
       - "8000"
+    volumes:
+      - model_data:/app/model
     healthcheck:  
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
@@ -145,9 +147,33 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
     restart: unless-stopped
-  
+
+  data_generator:
+    build: ./backend
+    container_name: movie_data_generator
+    command: python -m app.ml.generate_data
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://movie_user:movie_pass@db:5432/movie_db
+    profiles:
+      - tools
+
+  ml_trainer:
+    build: ./backend
+    container_name: movie_ml_trainer
+    command: python -m app.ml.train
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://movie_user:movie_pass@db:5432/movie_db
+    volumes:
+      - model_data:/app/model
+    profiles:
+      - tools
 
 volumes:
   postgres_data:
   minio_data:
   grafana_data:
+  model_data:

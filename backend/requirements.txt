@@ -1,8 +1,8 @@
-fastapi
+fastapi==0.115.6
 uvicorn[standard]
 sqlalchemy
 psycopg2-binary
-jinja2
+jinja2==3.1.4
 python-multipart
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
@@ -13,3 +13,8 @@ prometheus-fastapi-instrumentator
 prometheus-client
 requests
 kafka-python
+scikit-learn
+pandas
+numpy
+joblib
+starlette==0.41.3

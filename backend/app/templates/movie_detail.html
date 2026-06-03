@@ -46,6 +46,44 @@
     <div class="card shadow-sm">
       <div class="card-body">
         {% if current_user %}
+          <div id="ai-prediction" class="mb-3" style="display:none;">
+            <div class="card border-success">
+              <div class="card-body p-3">
+                <div class="d-flex align-items-center mb-2">
+                  <span class="me-2">🤖</span>
+                  <strong class="text-success small">AI predikcija za tebe</strong>
+                </div>
+                <p class="mb-1" id="ai-message" style="font-size: 1.05rem;"></p>
+                <small class="text-muted" id="ai-confidence"></small>
+              </div>
+            </div>
+          </div>
+        
+          <script>
+            fetch("/predict/{{ movie.id }}")
+              .then(r => r.json())
+              .then(data => {
+                if (data.error) return;  
+                const box = document.getElementById("ai-prediction");
+                const msg = document.getElementById("ai-message");
+                const conf = document.getElementById("ai-confidence");
+              
+                msg.textContent = data.message;
+                conf.textContent = `Vjerojatnost: ${(data.probability * 100).toFixed(0)}% (${data.confidence} pouzdanost)`;
+              
+                const card = box.querySelector(".card");
+                if (data.prediction === 1) {
+                  card.classList.add("border-success");
+                } else {
+                  card.classList.remove("border-success");
+                  card.classList.add("border-danger");
+                  msg.classList.remove("text-success");
+                }
+                box.style.display = "block";
+              })
+              .catch(() => {});
+          </script>
+
           <div class="d-flex gap-2 mb-3">
             {% if in_watchlist %}
               <form method="post" action="/watchlist/remove/{{ movie.id }}" class="flex-grow-1">

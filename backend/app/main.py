@@ -14,6 +14,7 @@ from pathlib import Path
 from passlib.context import CryptContext
 from .events.producer import send_event
 from datetime import datetime, timezone
+from .ml.predict import predict as ml_predict, is_model_available
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -87,6 +88,8 @@ def _classify_event(method: str, path: str) -> str | None:
         return "favorite_remove"
     if method == "GET" and path == "/profile":
         return "view_profile"
+    if method == "GET" and path.startswith("/predict/"):
+        return "view_predict"
     return None
 
 Instrumentator().instrument(app).expose(app)
@@ -435,3 +438,20 @@ def profile(request: Request, db: Session = Depends(get_db)):
             "avg_user_rating": avg_user_rating,
         },
     )
+
+
+@app.get("/predict/{movie_id}")
+def predict_endpoint(movie_id: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return {"error": "not_logged_in"}
+
+    movie = db.query(Movie).filter_by(id=movie_id).first()
+    if not movie:
+        return {"error": "movie_not_found"}
+
+    result = ml_predict(user.id, movie, db)
+    if result is None:
+        return {"error": "model_not_available"}
+
+    return result
