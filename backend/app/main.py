@@ -9,6 +9,7 @@ import asyncio
 from prometheus_fastapi_instrumentator import Instrumentator
 from .database import engine, get_db
 from .models import Base, User, Movie, Rating, Watchlist, Favorite
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from pathlib import Path
 from passlib.context import CryptContext
@@ -122,46 +123,112 @@ def health_check():
     return {"status": "ok"}
 
 @app.get("/", response_class=HTMLResponse)
-async def list_movies(request: Request, db: Session = Depends(get_db)):
+async def list_movies(
+    request: Request,
+    db: Session = Depends(get_db),
+    q: str | None = None,
+    genre: str | None = None,
+    year: str | None = None,
+):
     cache_key = "movies_list"
+    movies = None
+    year_filter = None
+
+    if year:
+        try:
+            year_filter = int(year)
+        except ValueError:
+            year_filter = None
 
     try:
-        cached = redis_client.get(cache_key)
-        if cached:
-            movies_data = json.loads(cached)
-            movies = []
-            for m_data in movies_data:
-                movie = Movie(
-                    id=m_data['id'],
-                    title=m_data['title'],
-                    genre=m_data['genre'],
-                    year=m_data['year'],
-                    poster_path=m_data.get('poster_path'),
-                    vote_average=m_data.get('vote_average'),
-                )
-                movies.append(movie)
+        if q or genre or year_filter is not None:
+            query = db.query(Movie)
+            if q:
+                search = f"%{q.strip()}%"
+                query = query.filter(Movie.title.ilike(search))
+            if genre:
+                query = query.filter(Movie.genre == genre)
+            if year_filter is not None:
+                query = query.filter(Movie.year == year_filter)
+            movies = query.all()
         else:
-            movies = db.query(Movie).all()
-            movies_data = []
-            for m in movies:
-                m_dict = {
-                    'id': m.id,
-                    'title': m.title,
-                    'genre': m.genre,
-                    'year': m.year,
-                    'poster_path': m.poster_path,
-                    'vote_average': m.vote_average,
-                }
-                movies_data.append(m_dict)
-            redis_client.setex(cache_key, 300, json.dumps(movies_data))
+            cached = redis_client.get(cache_key)
+            if cached:
+                movies_data = json.loads(cached)
+                movies = []
+                for m_data in movies_data:
+                    movie = Movie(
+                        id=m_data['id'],
+                        title=m_data['title'],
+                        genre=m_data['genre'],
+                        year=m_data['year'],
+                        poster_path=m_data.get('poster_path'),
+                        vote_average=m_data.get('vote_average'),
+                    )
+                    movies.append(movie)
+            else:
+                movies = db.query(Movie).all()
+                movies_data = []
+                for m in movies:
+                    m_dict = {
+                        'id': m.id,
+                        'title': m.title,
+                        'genre': m.genre,
+                        'year': m.year,
+                        'poster_path': m.poster_path,
+                        'vote_average': m.vote_average,
+                    }
+                    movies_data.append(m_dict)
+                redis_client.setex(cache_key, 300, json.dumps(movies_data))
     except Exception as e:
         print(f"Redis error: {e}, fallback to DB")
-        movies = db.query(Movie).all()
+        query = db.query(Movie)
+        if q:
+            search = f"%{q.strip()}%"
+            query = query.filter(Movie.title.ilike(search))
+        if genre:
+            query = query.filter(Movie.genre == genre)
+        if year_filter is not None:
+            query = query.filter(Movie.year == year_filter)
+        movies = query.all()
+
+    genres = [row[0] for row in db.query(Movie.genre).distinct().order_by(Movie.genre).all()]
+    years = [row[0] for row in db.query(Movie.year).distinct().order_by(Movie.year).all()]
 
     current_user = get_current_user(request, db)
+    recommended_movies = []
+    if current_user and is_model_available():
+        rated_movie_ids = [r.movie_id for r in db.query(Rating).filter_by(user_id=current_user.id).all()]
+        watchlist_movie_ids = [r.movie_id for r in db.query(Watchlist).filter_by(user_id=current_user.id).all()]
+        favorite_movie_ids = [r.movie_id for r in db.query(Favorite).filter_by(user_id=current_user.id).all()]
+        excluded_ids = set(rated_movie_ids + watchlist_movie_ids + favorite_movie_ids)
+
+        candidates = db.query(Movie).filter(~Movie.id.in_(excluded_ids)).all()
+        scored = []
+        for movie in candidates:
+            prediction = ml_predict(current_user.id, movie, db)
+            if prediction is None:
+                continue
+            scored.append((prediction.get("probability", 0.0), movie))
+        scored.sort(key=lambda item: item[0], reverse=True)
+        recommended_movies = [
+            {"id": movie.id, "title": movie.title, "year": movie.year, "genre": movie.genre}
+            for _, movie in scored[:10]
+        ]
+
     return templates.TemplateResponse(
         "movies.html",
-        {"request": request, "movies": movies, "current_user": current_user},
+        {
+            "request": request,
+            "movies": movies,
+            "current_user": current_user,
+            "genres": genres,
+            "years": years,
+            "q": q,
+            "genre_filter": genre,
+            "year_filter": year_filter,
+            "recommended_movies": recommended_movies,
+        },
     )
 
 @app.get("/movies/{movie_id}", response_class=HTMLResponse)
@@ -309,6 +376,16 @@ def add_rating_html(
     db.commit()
     return RedirectResponse(url=f"/movies/{movie_id}", status_code=303)
 
+@app.post("/ratings/remove/{movie_id}")
+def remove_rating(movie_id: int, request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    db.query(Rating).filter_by(user_id=current_user.id, movie_id=movie_id).delete()
+    db.commit()
+    return RedirectResponse(url="/profile", status_code=303)
+
 @app.post("/users")
 def create_user(email: str, password: str, db: Session = Depends(get_db)):
     user = User(email=email, password_hash=hash_password(password))
@@ -358,14 +435,19 @@ def watchlist_add(movie_id: int, request: Request, db: Session = Depends(get_db)
     return RedirectResponse(url=f"/movies/{movie_id}", status_code=303)
 
 @app.post("/watchlist/remove/{movie_id}")
-def watchlist_remove(movie_id: int, request: Request, db: Session = Depends(get_db)):
+def watchlist_remove(
+    movie_id: int,
+    request: Request,
+    next: str | None = None,
+    db: Session = Depends(get_db),
+):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
 
     db.query(Watchlist).filter_by(user_id=user.id, movie_id=movie_id).delete()
     db.commit()
-    return RedirectResponse(url=f"/movies/{movie_id}", status_code=303)
+    return RedirectResponse(url=next or f"/movies/{movie_id}", status_code=303)
 
 @app.post("/favorites/add/{movie_id}")
 def favorite_add(movie_id: int, request: Request, db: Session = Depends(get_db)):
@@ -382,14 +464,35 @@ def favorite_add(movie_id: int, request: Request, db: Session = Depends(get_db))
 
 
 @app.post("/favorites/remove/{movie_id}")
-def favorite_remove(movie_id: int, request: Request, db: Session = Depends(get_db)):
+def favorite_remove(
+    movie_id: int,
+    request: Request,
+    next: str | None = None,
+    db: Session = Depends(get_db),
+):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
 
     db.query(Favorite).filter_by(user_id=user.id, movie_id=movie_id).delete()
     db.commit()
-    return RedirectResponse(url=f"/movies/{movie_id}", status_code=303)
+    return RedirectResponse(url=next or f"/movies/{movie_id}", status_code=303)
+
+@app.post("/movies/delete/{movie_id}")
+def delete_movie(movie_id: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    movie = db.query(Movie).filter_by(id=movie_id).first()
+    if movie and movie.tmdb_id is None:
+        db.query(Watchlist).filter_by(movie_id=movie_id).delete()
+        db.query(Favorite).filter_by(movie_id=movie_id).delete()
+        db.query(Rating).filter_by(movie_id=movie_id).delete()
+        db.delete(movie)
+        db.commit()
+
+    return RedirectResponse(url="/profile", status_code=303)
 
 @app.get("/profile", response_class=HTMLResponse)
 def profile(request: Request, db: Session = Depends(get_db)):
@@ -420,6 +523,13 @@ def profile(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
+    added_movies = (
+        db.query(Movie)
+        .filter(Movie.tmdb_id == None)
+        .order_by(Movie.id.desc())
+        .all()
+    )
+
     total_ratings = len(rated)
     avg_user_rating = (
         sum(r.rating for _, r in rated) / total_ratings
@@ -434,6 +544,7 @@ def profile(request: Request, db: Session = Depends(get_db)):
             "watchlist_movies": watchlist_movies,
             "favorite_movies": favorite_movies,
             "rated": rated,
+            "added_movies": added_movies,
             "total_ratings": total_ratings,
             "avg_user_rating": avg_user_rating,
         },

@@ -7,33 +7,97 @@
   </div>
 </div>
 
-{% if movies %}
-<div class="row g-3">
-  {% for movie in movies %}
-  <div class="col-md-4 col-lg-3">
-    <div class="card shadow-sm h-100">
-      {% if movie.poster_path %}
-        <img src="https://image.tmdb.org/t/p/w500{{ movie.poster_path }}"
-             class="card-img-top" alt="{{ movie.title }}"
-             style="height: 330px; object-fit: cover;">
-      {% else %}
-        <div class="d-flex align-items-center justify-content-center bg-secondary text-white"
-             style="height: 330px;">
-          <span>Nema postera</span>
+<form method="get" action="/" class="card card-body mb-4">
+  <div class="row g-3 align-items-end">
+    <div class="col-md-5">
+      <label class="form-label" for="q">Pretraži</label>
+      <input
+        id="q"
+        name="q"
+        type="search"
+        class="form-control"
+        placeholder="Naslov, žanr ili godina"
+        value="{{ q or '' }}"
+      >
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="genre">Žanr</label>
+      <select id="genre" name="genre" class="form-select">
+        <option value="">Sve žanrove</option>
+        {% for g in genres %}
+          <option value="{{ g }}" {% if g == genre_filter %}selected{% endif %}>{{ g }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="year">Godina</label>
+      <select id="year" name="year" class="form-select">
+        <option value="">Sve godine</option>
+        {% for y in years %}
+          <option value="{{ y }}" {% if y == year_filter %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2 d-grid">
+      <button type="submit" class="btn btn-primary">Filtriraj</button>
+      <a href="/" class="btn btn-link text-secondary mt-2">Poništi</a>
+    </div>
+  </div>
+</form>
+
+<div class="row">
+  <div class="col-lg-8">
+    {% if movies %}
+    <div class="row g-3">
+      {% for movie in movies %}
+      <div class="col-md-4 col-lg-6 col-xl-4">
+        <div class="card shadow-sm h-100">
+          {% if movie.poster_path %}
+            <img src="https://image.tmdb.org/t/p/w500{{ movie.poster_path }}"
+                 class="card-img-top" alt="{{ movie.title }}"
+                 style="height: 330px; object-fit: cover;">
+          {% else %}
+            <div class="d-flex align-items-center justify-content-center bg-secondary text-white"
+                 style="height: 330px;">
+              <span>Nema postera</span>
+            </div>
+          {% endif %}
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title mb-1">{{ movie.title }}</h5>
+            <p class="card-subtitle text-muted mb-2">{{ movie.year }} · {{ movie.genre }}</p>
+            <a href="/movies/{{ movie.id }}" class="btn btn-sm btn-primary mt-auto">Detalji</a>
+          </div>
         </div>
-      {% endif %}
-      <div class="card-body d-flex flex-column">
-        <h5 class="card-title mb-1">{{ movie.title }}</h5>
-        <p class="card-subtitle text-muted mb-2">{{ movie.year }} · {{ movie.genre }}</p>
-        <a href="/movies/{{ movie.id }}" class="btn btn-sm btn-primary mt-auto">Detalji</a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+      Još nema filmova. Dodaj prvi film klikom na <strong>Novi film</strong>.
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Top 10 preporuka</h5>
+      </div>
+      <div class="card-body">
+        {% if recommended_movies %}
+          <div class="list-group list-group-flush">
+            {% for movie in recommended_movies %}
+              <a href="/movies/{{ movie.id }}" class="list-group-item list-group-item-action py-3">
+                <div class="fw-bold">{{ movie.title }}</div>
+                <small class="text-muted">{{ movie.year }} · {{ movie.genre }}</small>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="mb-0">Prijavi se i pogledaj preporuke po AI modelu.</p>
+        {% endif %}
       </div>
     </div>
   </div>
-{% endfor %}
 </div>
-{% else %}
-<div class="alert alert-info">
-  Još nema filmova. Dodaj prvi film klikom na <strong>Novi film</strong>.
-</div>
-{% endif %}
 {% endblock %}

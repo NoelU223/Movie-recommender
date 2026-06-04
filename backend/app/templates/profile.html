@@ -42,22 +42,28 @@
 <div class="row g-3 mb-4">
   {% for movie in watchlist_movies %}
     <div class="col-md-3 col-lg-2">
-      <a href="/movies/{{ movie.id }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100">
-          {% if movie.poster_path %}
-            <img src="https://image.tmdb.org/t/p/w300{{ movie.poster_path }}"
-                 class="card-img-top" alt="{{ movie.title }}"
-                 style="height: 240px; object-fit: cover;">
-          {% else %}
-            <div class="d-flex align-items-center justify-content-center bg-secondary text-white" style="height: 240px;">
-              <small>Nema postera</small>
-            </div>
-          {% endif %}
-          <div class="card-body p-2">
+      <div class="card shadow-sm h-100">
+        {% if movie.poster_path %}
+          <img src="https://image.tmdb.org/t/p/w300{{ movie.poster_path }}"
+               class="card-img-top" alt="{{ movie.title }}"
+               style="height: 240px; object-fit: cover;">
+        {% else %}
+          <div class="d-flex align-items-center justify-content-center bg-secondary text-white" style="height: 240px;">
+            <small>Nema postera</small>
+          </div>
+        {% endif %}
+        <div class="card-body p-2 d-flex flex-column">
+          <div class="mb-2">
             <small class="text-dark fw-bold">{{ movie.title }}</small>
           </div>
+          <div class="mt-auto d-grid">
+            <a href="/movies/{{ movie.id }}" class="btn btn-sm btn-outline-primary">Detalji</a>
+            <form method="post" action="/watchlist/remove/{{ movie.id }}?next=/profile">
+              <button type="submit" class="btn btn-sm btn-outline-danger mt-2">Ukloni</button>
+            </form>
+          </div>
         </div>
-      </a>
+      </div>
     </div>
   {% endfor %}
 </div>
@@ -72,22 +78,28 @@
 <div class="row g-3 mb-4">
   {% for movie in favorite_movies %}
     <div class="col-md-3 col-lg-2">
-      <a href="/movies/{{ movie.id }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100 border-danger">
-          {% if movie.poster_path %}
-            <img src="https://image.tmdb.org/t/p/w300{{ movie.poster_path }}"
-                 class="card-img-top" alt="{{ movie.title }}"
-                 style="height: 240px; object-fit: cover;">
-          {% else %}
-            <div class="d-flex align-items-center justify-content-center bg-secondary text-white" style="height: 240px;">
-              <small>Nema postera</small>
-            </div>
-          {% endif %}
-          <div class="card-body p-2">
+      <div class="card shadow-sm h-100 border-danger">
+        {% if movie.poster_path %}
+          <img src="https://image.tmdb.org/t/p/w300{{ movie.poster_path }}"
+               class="card-img-top" alt="{{ movie.title }}"
+               style="height: 240px; object-fit: cover;">
+        {% else %}
+          <div class="d-flex align-items-center justify-content-center bg-secondary text-white" style="height: 240px;">
+            <small>Nema postera</small>
+          </div>
+        {% endif %}
+        <div class="card-body p-2 d-flex flex-column">
+          <div class="mb-2">
             <small class="text-dark fw-bold">{{ movie.title }}</small>
           </div>
+          <div class="mt-auto d-grid">
+            <a href="/movies/{{ movie.id }}" class="btn btn-sm btn-outline-primary">Detalji</a>
+            <form method="post" action="/favorites/remove/{{ movie.id }}?next=/profile">
+              <button type="submit" class="btn btn-sm btn-outline-danger mt-2">Ukloni</button>
+            </form>
+          </div>
         </div>
-      </a>
+      </div>
     </div>
   {% endfor %}
 </div>
@@ -97,18 +109,46 @@
 </div>
 {% endif %}
 
+<h2 class="h4 mb-3">➕ Dodani filmovi <small class="text-muted">({{ added_movies|length }})</small></h2>
+{% if added_movies %}
+<div class="list-group mb-4">
+  {% for movie in added_movies %}
+    <div class="list-group-item d-flex justify-content-between align-items-center">
+      <div>
+        <strong>{{ movie.title }}</strong>
+        <small class="text-muted ms-2">{{ movie.year }} · {{ movie.genre }}</small>
+      </div>
+      <form method="post" action="/movies/delete/{{ movie.id }}">
+        <button type="submit" class="btn btn-sm btn-outline-danger">Obriši</button>
+      </form>
+    </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-light border mb-4">
+  Nema filmova koje si ručno dodao.
+</div>
+{% endif %}
+
 <h2 class="h4 mb-3">⭐ Moje ocjene <small class="text-muted">({{ total_ratings }})</small></h2>
 {% if rated %}
 <div class="card shadow-sm">
   <div class="list-group list-group-flush">
     {% for movie, rating in rated %}
-      <a href="/movies/{{ movie.id }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+      <div class="list-group-item d-flex justify-content-between align-items-center">
         <div>
-          <strong>{{ movie.title }}</strong>
+          <a href="/movies/{{ movie.id }}" class="text-decoration-none">
+            <strong>{{ movie.title }}</strong>
+          </a>
           <small class="text-muted ms-2">{{ movie.year }} · {{ movie.genre }}</small>
         </div>
-        <span class="badge bg-success">{{ rating.rating }}/10</span>
-      </a>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-success">{{ rating.rating }}/10</span>
+          <form method="post" action="/ratings/remove/{{ movie.id }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger">Ukloni</button>
+          </form>
+        </div>
+      </div>
     {% endfor %}
   </div>
 </div>
