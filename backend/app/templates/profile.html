@@ -109,27 +109,6 @@
 </div>
 {% endif %}
 
-<h2 class="h4 mb-3">➕ Dodani filmovi <small class="text-muted">({{ added_movies|length }})</small></h2>
-{% if added_movies %}
-<div class="list-group mb-4">
-  {% for movie in added_movies %}
-    <div class="list-group-item d-flex justify-content-between align-items-center">
-      <div>
-        <strong>{{ movie.title }}</strong>
-        <small class="text-muted ms-2">{{ movie.year }} · {{ movie.genre }}</small>
-      </div>
-      <form method="post" action="/movies/delete/{{ movie.id }}">
-        <button type="submit" class="btn btn-sm btn-outline-danger">Obriši</button>
-      </form>
-    </div>
-  {% endfor %}
-</div>
-{% else %}
-<div class="alert alert-light border mb-4">
-  Nema filmova koje si ručno dodao.
-</div>
-{% endif %}
-
 <h2 class="h4 mb-3">⭐ Moje ocjene <small class="text-muted">({{ total_ratings }})</small></h2>
 {% if rated %}
 <div class="card shadow-sm">

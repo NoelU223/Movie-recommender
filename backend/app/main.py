@@ -212,7 +212,13 @@ async def list_movies(
             scored.append((prediction.get("probability", 0.0), movie))
         scored.sort(key=lambda item: item[0], reverse=True)
         recommended_movies = [
-            {"id": movie.id, "title": movie.title, "year": movie.year, "genre": movie.genre}
+            {
+                "id": movie.id,
+                "title": movie.title,
+                "year": movie.year,
+                "genre": movie.genre,
+                "poster_path": movie.poster_path,
+            }
             for _, movie in scored[:10]
         ]
 

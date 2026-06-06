@@ -1,103 +1,151 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <div>
-    <h1 class="h3 mb-1">Filmovi</h1>
-    <p class="text-muted mb-0">Ukupno filmova: {{ movies|length }}</p>
+<div class="page-hero rounded-4 mb-4 p-4">
+  <div class="hero-copy">
+    <h1 class="display-6 fw-bold mb-3">Filmovi</h1>
+    <p class="lead text-muted">Pronađi, filtriraj i otkrij preporuke uz pomoć naše inteligentne preporuke.</p>
+    <p class="text-muted">Ukupno filmova: <strong>{{ movies|length }}</strong></p>
   </div>
 </div>
 
-<form method="get" action="/" class="card card-body mb-4">
-  <div class="row g-3 align-items-end">
-    <div class="col-md-5">
-      <label class="form-label" for="q">Pretraži</label>
-      <input
-        id="q"
-        name="q"
-        type="search"
-        class="form-control"
-        placeholder="Naslov, žanr ili godina"
-        value="{{ q or '' }}"
-      >
+<div class="card search-card p-4 mb-4 border-0 shadow-sm bg-black bg-opacity-85 text-white">
+  <form method="get" action="/">
+    <div class="row g-3 align-items-end">
+      <div class="col-lg-6">
+        <label class="form-label" for="q">Search</label>
+        <input
+          id="q"
+          name="q"
+          type="search"
+          class="form-control"
+          placeholder="Naslov, žanr ili godina"
+          value="{{ q or '' }}"
+        >
+      </div>
+      <div class="col-md-3 col-lg-2">
+        <label class="form-label" for="genre">Žanr</label>
+        <select id="genre" name="genre" class="form-select">
+          <option value="">Sve žanrove</option>
+          {% for g in genres %}
+            <option value="{{ g }}" {% if g == genre_filter %}selected{% endif %}>{{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3 col-lg-2">
+        <label class="form-label" for="year">Godina</label>
+        <select id="year" name="year" class="form-select">
+          <option value="">Sve godine</option>
+          {% for y in years %}
+            <option value="{{ y }}" {% if y == year_filter %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-lg-2 d-grid">
+        <button type="submit" class="btn btn-primary w-100">Filtriraj</button>
+        <a href="/" class="btn btn-outline-secondary w-100 mt-2">Poništi</a>
+      </div>
     </div>
-    <div class="col-md-3">
-      <label class="form-label" for="genre">Žanr</label>
-      <select id="genre" name="genre" class="form-select">
-        <option value="">Sve žanrove</option>
-        {% for g in genres %}
-          <option value="{{ g }}" {% if g == genre_filter %}selected{% endif %}>{{ g }}</option>
-        {% endfor %}
-      </select>
+  </form>
+</div>
+
+<div class="card recommendation-card rounded-4 border-0 shadow-sm mb-4 bg-dark bg-opacity-95">
+  <div class="card-body">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+      <div>
+        <h5 class="card-title text-white mb-2">Top 10 preporuka</h5>
+        <p class="text-muted mb-0">Preporučeni filmovi posebno odabrani za tebe.</p>
+      </div>
+      {% if recommended_movies %}
+      <div class="btn-group btn-group-sm" role="group" aria-label="Carousel controls">
+        <button class="btn btn-outline-secondary" type="button" data-bs-target="#recommendedCarousel" data-bs-slide="prev">
+          <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Prethodno</span>
+        </button>
+        <button class="btn btn-outline-secondary" type="button" data-bs-target="#recommendedCarousel" data-bs-slide="next">
+          <span class="carousel-control-next-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Sljedeće</span>
+        </button>
+      </div>
+      {% endif %}
     </div>
-    <div class="col-md-2">
-      <label class="form-label" for="year">Godina</label>
-      <select id="year" name="year" class="form-select">
-        <option value="">Sve godine</option>
-        {% for y in years %}
-          <option value="{{ y }}" {% if y == year_filter %}selected{% endif %}>{{ y }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-2 d-grid">
-      <button type="submit" class="btn btn-primary">Filtriraj</button>
-      <a href="/" class="btn btn-link text-secondary mt-2">Poništi</a>
-    </div>
+
+    {% if recommended_movies %}
+      <div id="recommendedCarousel" class="carousel slide" data-bs-ride="carousel">
+        <div class="carousel-inner">
+          {% for slide in recommended_movies|batch(3, None) %}
+            <div class="carousel-item {% if loop.first %}active{% endif %}">
+              <div class="row g-3">
+                {% for movie in slide %}
+                  {% if movie %}
+                  <div class="col-md-4">
+                    <a href="/movies/{{ movie.id }}" class="text-decoration-none text-white">
+                      <div class="card h-100 rounded-4 overflow-hidden bg-black border-0 shadow-sm">
+                        {% if movie.poster_path %}
+                          <img src="https://image.tmdb.org/t/p/w500{{ movie.poster_path }}" class="card-img-top poster-img" alt="{{ movie.title }}">
+                        {% else %}
+                          <div class="poster-img d-flex align-items-center justify-content-center bg-secondary text-white">
+                            <span>Nema postera</span>
+                          </div>
+                        {% endif %}
+                        <div class="card-body bg-black bg-opacity-80 p-3">
+                          <h6 class="card-title text-white mb-1">{{ movie.title }}</h6>
+                          <p class="card-text text-white mb-0">{{ movie.genre }}</p>
+                        </div>
+                      </div>
+                    </a>
+                  </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="carousel-indicators mt-4">
+          {% for slide in recommended_movies|batch(3, None) %}
+            <button type="button" data-bs-target="#recommendedCarousel" data-bs-slide-to="{{ loop.index0 }}" class="{% if loop.first %}active{% endif %}" aria-current="{% if loop.first %}true{% endif %}" aria-label="Slide {{ loop.index }}"></button>
+          {% endfor %}
+        </div>
+      </div>
+    {% else %}
+      <div class="alert alert-info mb-0">
+        Prijavi se i pogledaj preporuke po AI modelu.
+      </div>
+    {% endif %}
   </div>
-</form>
+</div>
 
 <div class="row">
-  <div class="col-lg-8">
+  <div class="col-12">
     {% if movies %}
-    <div class="row g-3">
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-4">
       {% for movie in movies %}
-      <div class="col-md-4 col-lg-6 col-xl-4">
-        <div class="card shadow-sm h-100">
-          {% if movie.poster_path %}
-            <img src="https://image.tmdb.org/t/p/w500{{ movie.poster_path }}"
-                 class="card-img-top" alt="{{ movie.title }}"
-                 style="height: 330px; object-fit: cover;">
-          {% else %}
-            <div class="d-flex align-items-center justify-content-center bg-secondary text-white"
-                 style="height: 330px;">
-              <span>Nema postera</span>
+      <div class="col">
+        <a href="/movies/{{ movie.id }}" class="text-decoration-none text-white">
+          <div class="card movie-card h-100 border-0 shadow-sm overflow-hidden bg-black">
+            {% if movie.poster_path %}
+              <img src="https://image.tmdb.org/t/p/w500{{ movie.poster_path }}" class="card-img-top poster-img" alt="{{ movie.title }}">
+            {% else %}
+              <div class="poster-img d-flex align-items-center justify-content-center bg-secondary text-white">
+                <span>Nema postera</span>
+              </div>
+            {% endif %}
+            <div class="card-body d-flex flex-column bg-black bg-opacity-90 p-3">
+              <h5 class="card-title text-white mb-2">{{ movie.title }}</h5>
+              <p class="card-text text-white mb-3">{{ movie.year }} · {{ movie.genre }}</p>
+              <div class="mt-auto">
+                <span class="btn btn-primary btn-sm w-100">Detalji</span>
+              </div>
             </div>
-          {% endif %}
-          <div class="card-body d-flex flex-column">
-            <h5 class="card-title mb-1">{{ movie.title }}</h5>
-            <p class="card-subtitle text-muted mb-2">{{ movie.year }} · {{ movie.genre }}</p>
-            <a href="/movies/{{ movie.id }}" class="btn btn-sm btn-primary mt-auto">Detalji</a>
           </div>
-        </div>
+        </a>
       </div>
       {% endfor %}
     </div>
     {% else %}
-    <div class="alert alert-info">
-      Još nema filmova. Dodaj prvi film klikom na <strong>Novi film</strong>.
+    <div class="alert alert-info rounded-4 shadow-sm">
+      Još nema filmova. Potrebno je uvoženje filma.
     </div>
     {% endif %}
-  </div>
-
-  <div class="col-lg-4">
-    <div class="card shadow-sm mb-4">
-      <div class="card-header">
-        <h5 class="card-title mb-0">Top 10 preporuka</h5>
-      </div>
-      <div class="card-body">
-        {% if recommended_movies %}
-          <div class="list-group list-group-flush">
-            {% for movie in recommended_movies %}
-              <a href="/movies/{{ movie.id }}" class="list-group-item list-group-item-action py-3">
-                <div class="fw-bold">{{ movie.title }}</div>
-                <small class="text-muted">{{ movie.year }} · {{ movie.genre }}</small>
-              </a>
-            {% endfor %}
-          </div>
-        {% else %}
-          <p class="mb-0">Prijavi se i pogledaj preporuke po AI modelu.</p>
-        {% endif %}
-      </div>
-    </div>
   </div>
 </div>
 {% endblock %}
