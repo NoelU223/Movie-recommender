@@ -5,7 +5,7 @@ import os
 import json
 import logging
 from collections import defaultdict
-
+import pandas as pd
 import numpy as np
 import joblib
 from sqlalchemy.orm import Session
@@ -77,11 +77,11 @@ def build_features(user_id: int, movie: Movie, db: Session) -> np.ndarray | None
     for g in _metadata["all_genres"]:
         feature_dict[f"genre_{g}"] = 1 if movie.genre == g else 0
 
-    feature_vector = np.array([
-        feature_dict.get(name, 0) for name in _metadata["feature_names"]
-    ]).reshape(1, -1)
-
-    return feature_vector
+    feature_df = pd.DataFrame(
+        [[feature_dict.get(name, 0) for name in _metadata["feature_names"]]],
+        columns=_metadata["feature_names"]
+    )
+    return feature_df
 
 
 def predict(user_id: int, movie: Movie, db: Session) -> dict | None:

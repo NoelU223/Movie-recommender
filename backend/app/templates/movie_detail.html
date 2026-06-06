@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
+{% if saved %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+  ✓ Ocjena uspješno spremljena!
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
 <div class="row">
   <div class="col-md-7">
     <div class="card shadow-sm mb-3">
@@ -114,15 +120,26 @@
             {% endif %}
           </div>
 
-          <h2 class="h5 mb-3">Dodaj ili promijeni svoju ocjenu</h2>
-          <form method="post" action="/ratings/html">
-            <div class="mb-3">
-              <label class="form-label">Tvoja ocjena (1–10)</label>
-              <input type="number" class="form-control" name="rating" min="1" max="10" required>
-            </div>
-            <input type="hidden" name="movie_id" value="{{ movie.id }}">
-            <button type="submit" class="btn btn-primary w-100">Spremi ocjenu</button>
-          </form>
+         <h2 class="h5 mb-3">
+  {% if user_rating %}
+    Tvoja ocjena: <span class="badge bg-success">{{ user_rating }}/10</span>
+  {% else %}
+    Dodaj svoju ocjenu
+  {% endif %}
+        </h2>
+        <form method="post" action="/ratings/html">
+          <div class="mb-3">
+            <label class="form-label">
+              {% if user_rating %}Promijeni ocjenu (1–10){% else %}Tvoja ocjena (1–10){% endif %}
+            </label>
+            <input type="number" class="form-control" name="rating" min="1" max="10" required
+                   value="{{ user_rating or '' }}">
+          </div>
+          <input type="hidden" name="movie_id" value="{{ movie.id }}">
+          <button type="submit" class="btn btn-primary w-100">
+            {% if user_rating %}Ažuriraj ocjenu{% else %}Spremi ocjenu{% endif %}
+          </button>
+        </form>
         {% else %}
           <h2 class="h5 mb-3">Ocjenjivanje</h2>
           <p class="text-muted">
