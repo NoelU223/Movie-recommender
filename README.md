@@ -1,11 +1,12 @@
 # Movie Recommender
 
 Sustav za preporuku filmova.
-Projekt je dio kolegija Infrastruktura podataka velikog obujma (IPVO) na Fakultetu Informatike i Digitalnih tehnologija.
+Projekt je dio kolegija Infrastruktura podataka velikog obujma (IPVO) i Analitika podataka velikog obujma (APVO) na Fakultetu Informatike i Digitalnih tehnologija.
+Prvih 3 faza su dio kolegija IPVO, a posljednja dio kolegija APVO.
 
 Faza 1: Backend servis + baza podataka + skalabilnost.
 Baza se pokreće s docker compose up --build i onda se testira na http://localhost
-Frontend za prvu fazu napravio kolega. Login i register funkcionalnosti.
+Frontend napravljen koristeći FastAPI. Login i register funkcionalnosti.
 
 Faza 2: Batch processor i dataset za future ML training (MinIO). 
 Sustav uzima ratings i movie_id svih filmova kako bi sakupio podatke za sustav preporuke filmova.
